@@ -14,7 +14,7 @@ import numpy as np
 import pickle
 import pyxdf
 
-
+# perhaps change the path here
 # path = "/mnt/data/analysis_INTENSE/data_dicts"
 # subjects =  ["AmWo", "AuWi", "BuUl", "EiHe", "FuMa", "GeKl", "GrMa", "GuWi", "HeIn", "KaBe", "MaPe", "MaSy", "MeRu", "PlKa", "PoHe", "SaCe", "SoFa", "WiLu", "ZaRo"]
 # path_list = []
@@ -64,6 +64,7 @@ import pyxdf
 
 # # #save mne object
 # print("saving the cleaned data...")
+## you can change the path so it is convinient for you
 # path = "/mnt/data/analysis_INTENSE/data_cleaned/" + ((path_list[index].split("/")[-1]).replace(".pickle", "_epo.fif"))
 # epochs_mne.save(path)
 
@@ -84,7 +85,7 @@ for subject in subjects:
                     path_list.append(file_path)
                     files_list.append(file)
                     
-index = 4                
+index = 0               
 streams, header = pyxdf.load_xdf(path_list[index])
 print("Reading the data...")
 data = np.array(streams[3]["time_series"]).T[:64,:]  # EEG time series
@@ -103,23 +104,24 @@ except:
     'F2','C1','C2','P1','P2','AF3','AF4','FC3','FC4','CP3','CP4','PO3','PO4','F5','F6','C5',\
      'C6','P5','P6','AF7','AF8','FT7','FT8','TP7','TP8','PO7', 'PO8','Fpz', 'CPz','POz','Oz']
 
-info = mne.create_info(ch_names = ch_names, sfreq=fs, ch_types='eeg')
+info = mne.create_info(ch_names = ch_names, sfreq=fs)
 
 print("Creating a plot...")
 raw = mne.io.RawArray(data, info)
 
 raw = mne.io.Raw.filter(raw, l_freq=0.5, h_freq=40, picks ='all')
 
-mne.viz.plot_raw(raw)
-
 # Generate events and plot epochs
 
 # ! be aware! sometimes loacalite markers sit in stream[0] (eg. BuUl) stream[1] (eg. AmWo)
 try:
     localitemarkers =  streams[1]['time_series'] # Information about localite markers
+    TMStimes_all =  streams[1]['time_stamps']  
+    location = 1
 except: 
     localitemarkers =  streams[0]['time_series']
-TMStimes_all =  streams[1]['time_stamps']  
+    TMStimes_all =  streams[0]['time_stamps']  
+    location = 0
 
 # get length of all loaclite markers 
 markers =  len(TMStimes_all)
@@ -133,10 +135,11 @@ for idx, event in enumerate(localitemarkers):
     if "coil_0_didt" in event[0]: # "coil_0_didt" is wanted markertype
         idxPulse.append(idx)
 
+# potentially the events are at a different location, perhaps this needs to checked for every file, if they are not in streams[1] or streams[0]
 event_array = []
 for i in range(len(idxPulse)):
-    event_array.append(streams[1]["time_stamps"][i])
-    
+    event_array.append(streams[location]["time_stamps"][i])
+       
 event_array = np.unique(np.array(event_array, dtype = "int"))
 events = np.zeros((event_array.shape[0], 3), dtype = "int")
 events[:,0] = event_array
@@ -150,6 +153,8 @@ epoched = mne.Epochs(raw, events, 0, tmax = 0, tmin = -3.006, baseline = None, d
 epoched.plot(picks ="all", n_epochs = 2, n_channels = 64, block = True)
 
 
-
-
-
+# # #save mne object
+# print("saving the cleaned data...")
+## change the path if necessary
+# path = "/mnt/data/analysis_INTENSE/data_cleaned/" + ((path_list[index].split("/")[-1]).replace(".pickle", "_epo.fif"))
+# epochs_mne.save(path)
